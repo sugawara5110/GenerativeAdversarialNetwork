@@ -6,8 +6,9 @@
 
 #include "Discriminator.h"
 
-Discriminator::Discriminator(UINT numWid, UINT numHei, UINT numFil, UINT inputsetnum) {
-	inWid = numWid;
+Discriminator::Discriminator(UINT numWid, UINT numHei, UINT numCol, UINT numFil, UINT inputsetnum) {
+	NumColor = numCol;
+	inWid = numWid * NumColor;
 	inHei = numHei;
 	numFilter = numFil;
 	numThread = inputsetnum;
@@ -29,16 +30,16 @@ Discriminator::Discriminator(UINT numWid, UINT numHei, UINT numFil, UINT inputse
 
 	layer[layerCnt].layerName = CONV;
 	layer[layerCnt].acName = ReLU;
-	layer[layerCnt].NumFilter = numFilter * 2;
+	layer[layerCnt].NumFilter = numFilter;
 	layer[layerCnt].NumConvFilterWid = 5;
 	layer[layerCnt++].NumConvFilterSlide = 1;
 
 	layer[layerCnt].layerName = POOL;
-	layer[layerCnt++].NumFilter = numFilter * 2;
+	layer[layerCnt++].NumFilter = numFilter;
 
 	layer[layerCnt].layerName = CONV;
 	layer[layerCnt].acName = ReLU;
-	layer[layerCnt].NumFilter = numFilter * 4;
+	layer[layerCnt].NumFilter = numFilter;
 	layer[layerCnt].NumConvFilterWid = 3;
 	layer[layerCnt++].NumConvFilterSlide = 1;
 
@@ -48,8 +49,8 @@ Discriminator::Discriminator(UINT numWid, UINT numHei, UINT numFil, UINT inputse
 	layer[layerCnt].layerName = AFFINE;
 	layer[layerCnt].acName = ReLU;
 	layer[layerCnt].topAcName = CrossEntropySigmoid;
-	layer[layerCnt].NumFilter = numFilter * 4;
-	layer[layerCnt].numNode[0] = 64;
+	layer[layerCnt].NumFilter = numFilter;
+	layer[layerCnt].numNode[0] = 256;
 	layer[layerCnt].numNode[1] = 1;
 	layer[layerCnt++].NumDepthNotInput = 2;
 
@@ -105,5 +106,5 @@ ID3D12Resource* Discriminator::GetOutErrResource() {
 }
 
 void Discriminator::Draw() {
-	cnn->TrainingDraw(150.0f, 120.0f);
+	cnn->TrainingDraw(10.0f, 120.0f);
 }

@@ -18,9 +18,10 @@ private:
 	UINT inHei;
 	UINT numFilter;
 	UINT numThread;
+	UINT NumColor;
 
 public:
-	Discriminator(UINT numWid, UINT numHei, UINT numFil, UINT inputsetnum);
+	Discriminator(UINT numWid, UINT numHei, UINT numCol, UINT numFil, UINT inputsetnum);
 	~Discriminator();
 	void SetLearningLate(float nn, float cn);
 	void SetActivationAlpha(float nn, float cn);

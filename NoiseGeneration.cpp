@@ -27,6 +27,15 @@ void NoiseGeneration::CreateNoise(float rate) {
 	}
 }
 
+void NoiseGeneration::CreateNoiseRand() {
+	srand(time(NULL));
+	for (UINT i = 0; i < NumInput; i++) {
+		input[i].x = (float)rand() / RAND_MAX;
+		input[i].y = (float)rand() / RAND_MAX;
+		input[i].z = (float)rand() / RAND_MAX;
+	}
+}
+
 VECTOR3* NoiseGeneration::GetNoiseArray() {
 	return input;
 }

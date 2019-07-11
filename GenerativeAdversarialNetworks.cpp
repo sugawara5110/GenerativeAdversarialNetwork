@@ -6,16 +6,16 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 #include "GenerativeAdversarialNetworks.h"
-#define BADGENUM 1
+#define BADGENUM 16
 
-GenerativeAdversarialNetworks::GenerativeAdversarialNetworks(UINT NumNoise, UINT outW, UINT outH) {
+GenerativeAdversarialNetworks::GenerativeAdversarialNetworks(UINT NumNoise, UINT outW, UINT outH, UINT numCol) {
+	NumColor = numCol;
 	imageWid = outW;
 	imageHei = outH;
-	NumColor = 3;
-	gn = new Generator(NumNoise, outW, outH);
+	NumFil = 10;
+	gn = new Generator(NumNoise, imageWid, imageHei, NumColor, NumFil, BADGENUM);
 	ng = new NoiseGeneration(NumNoise);
-	dis = new Discriminator(imageWid, imageHei, NumColor, BADGENUM);
-	path = TRDis1;
+	dis = new Discriminator(imageWid, imageHei, NumColor, NumFil, BADGENUM);
 	pixel = new UINT * [outH];
 	for (UINT i = 0; i < outH; i++)pixel[i] = new UINT[outW];
 
@@ -67,58 +67,60 @@ void GenerativeAdversarialNetworks::LearningByteImage() {
 
 		byteInd = rand() % NumImage;
 		UINT imIndSt = byteInd * imageWid * NumColor * imageHei;
-		for (UINT i = 0; i < imageWid * imageHei; i++) {
+		for (UINT i = 0; i < imageWid * NumColor * imageHei; i += NumColor) {
+			UINT GetOutputElIndexSt = imageWid * NumColor * imageHei;
 			UINT elRed = 0;
 			UINT elGreen = 0;
 			UINT elBlue = 0;
 			float el = 0.0f;
 			float el1 = 0.0f;
 			float el2 = 0.0f;
-			UINT GetOutputElIndexSt = imageWid * imageHei;
-			switch (path) {
-			case TRDis1:
-				elRed = image[imIndSt + i * NumColor];
-				elGreen = image[imIndSt + i * NumColor + 1];
-				elBlue = image[imIndSt + i * NumColor + 2];
-				pixel[i / imageWid][i % imageWid] = ((elBlue << 16) | (elGreen << 8) | elRed);
-				el = ((float)elRed / 255.0f * 0.99f) + 0.01f;
-				el1 = ((float)elGreen / 255.0f * 0.99f) + 0.01f;
-				el2 = ((float)elBlue / 255.0f * 0.99f) + 0.01f;
-				break;
-			case TRDis0:
-			case TRGen:
-				el = gn->GetOutputEl(i, k);
-				el1 = gn->GetOutputEl(GetOutputElIndexSt * 1 + i, k);
-				el2 = gn->GetOutputEl(GetOutputElIndexSt * 2 + i, k);
-				break;
+			for (int i1 = 0; i1 < NumFil; i1++) {
+				switch (path) {
+				case TRDis1:
+					elRed = image[imIndSt + i];
+					elGreen = image[imIndSt + i + 1];
+					elBlue = image[imIndSt + i + 2];
+					pixel[i / NumColor / imageWid][i / NumColor % imageWid] = ((elBlue << 16) | (elGreen << 8) | elRed);
+					el = ((float)elRed / 255.0f * 0.99f) - 0.5f;
+					el1 = ((float)elGreen / 255.0f * 0.99f) - 0.5f;
+					el2 = ((float)elBlue / 255.0f * 0.99f) - 0.5f;
+					break;
+				case TRDis0:
+				case TRGen:
+					el = gn->GetOutputEl(GetOutputElIndexSt * i1 + i, k);
+					el1 = gn->GetOutputEl(GetOutputElIndexSt * i1 + i + 1, k);
+					el2 = gn->GetOutputEl(GetOutputElIndexSt * i1 + i + 2, k);
+					break;
+				}
+				dis->InputArrayEl(el, i1, i, k);//Ô
+				dis->InputArrayEl(el1, i1, i + 1, k);//—Î
+				dis->InputArrayEl(el2, i1, i + 2, k);//Â
 			}
-			dis->InputArrayEl(el, 0, i, k);//Ô
-			dis->InputArrayEl(el1, 1, i, k);//—Î
-			dis->InputArrayEl(el2, 2, i, k);//Â
 		}
 	}
 }
 
 void GenerativeAdversarialNetworks::TrainingDiscriminator() {
-	ng->CreateNoise(10.0f);
+	ng->CreateNoise(1.0f);
 	gn->SetNoise(ng->GetNoiseArray());
-	gn->SetActivationAlpha(0.1f, 0.1f);
+	gn->SetActivationAlpha(0.01f, 0.01f);
 	gn->ForwardPropagation();
-	dis->SetLearningLate(0.1f, 0.1f);
-	dis->SetActivationAlpha(0.1f, 0.1f);
+	dis->SetLearningLate(0.05f, 0.05f);
+	dis->SetActivationAlpha(0.2f, 0.2f);
 	LearningByteImage();
 	dis->ForwardPropagation();
 	dis->BackPropagation();
 }
 
 void GenerativeAdversarialNetworks::TrainingGenerator() {
-	ng->CreateNoise(10.0f);
+	ng->CreateNoise(1.0f);
 	gn->SetNoise(ng->GetNoiseArray());
-	gn->SetLearningLate(0.1f, 0.1f);
-	gn->SetActivationAlpha(0.1f, 0.1f);
+	gn->SetLearningLate(0.05f, 0.05f);
+	gn->SetActivationAlpha(0.2f, 0.2f);
 	gn->ForwardPropagation();
-	dis->SetLearningLate(0.1f, 0.1f);
-	dis->SetActivationAlpha(0.1f, 0.1f);
+	dis->SetLearningLate(0.05f, 0.05f);
+	dis->SetActivationAlpha(0.2f, 0.2f);
 	LearningByteImage();
 	dis->ForwardPropagation();
 	dis->BackPropagationNoUpdate();
@@ -139,34 +141,67 @@ void GenerativeAdversarialNetworks::Com() {
 
 	switch (path) {
 	case TRDis1:
-		path = TRDis0;
 		outputDis99 = dis->GetOutputEl(0, 0);
-		return;
+		break;
 	case TRDis0:
 		outputDis01 = dis->GetOutputEl(0, 0);
-		path = TRGen;
-		return;
+		break;
 	case TRGen:
 		outputGen99 = dis->GetOutputEl(0, 0);
+		break;
+	}
+
+	if (pathF) {
+		switch (path) {
+		case TRDis1:
+			path = TRDis0;
+			break;
+		case TRDis0:
+			path = TRDis1;
+			break;
+		}
+	}
+
+	pathCnt++;
+	allCnt++;
+	if (pathF && pathCnt > 1) {
+		pathF = false;
+		pathCnt = 0;
+		path = TRGen;
+	}
+	if (!pathF && pathCnt > 2) {
+		pathF = true;
+		pathCnt = 0;
 		path = TRDis1;
-		return;
 	}
 }
 
 void GenerativeAdversarialNetworks::Draw() {
-	DxText::GetInstance()->UpDateText(L"‹³Žt‰æ‘œ ", 150.0f, 0.0f, 15.0f, { 1.0f, 1.0f, 1.0f, 1.0f });
+	DxText::GetInstance()->UpDateText(L"‹³Žt‰æ‘œ ", 10.0f, 0.0f, 15.0f, { 1.0f, 1.0f, 1.0f, 1.0f });
 	gn->DrawOutput();
 	dis->Draw();
-	dr.Update(150.0f, 20.0f, 0.8f, 1.0f, 1.0f, 1.0f, 1.0f, 100.0f, 100.0f);
+	dr.Update(10.0f, 20.0f, 0.8f, 1.0f, 1.0f, 1.0f, 1.0f, 100.0f, 100.0f);
 	dr.SetTextureMPixel(pixel, 0xff, 0xff, 0xff, 0xff, 0);
 	dr.Draw();
 
-	DxText::GetInstance()->UpDateText(L"DiscriminatorŠwK‹³Žt‰æ‘œ ", 300.0f, 10.0f, 15.0f, { 1.0f, 1.0f, 1.0f, 1.0f });
-	DxText::GetInstance()->UpDateValue((int)(outputDis99 * 100.0f), 610.0f, 10.0f, 15.0f, 2, { 1.0f, 1.0f, 1.0f, 1.0f });
-	DxText::GetInstance()->UpDateText(L"DiscriminatorŠwK¶¬‰æ‘œ ", 300.0f, 25.0f, 15.0f, { 1.0f, 1.0f, 1.0f, 1.0f });
-	DxText::GetInstance()->UpDateValue((int)(outputDis01 * 100.0f), 610.0f, 25.0f, 15.0f, 2, { 1.0f, 1.0f, 1.0f, 1.0f });
-	DxText::GetInstance()->UpDateText(L"Generator    ŠwK¶¬‰æ‘œ ", 300.0f, 40.0f, 15.0f, { 1.0f, 1.0f, 1.0f, 1.0f });
-	DxText::GetInstance()->UpDateValue((int)(outputGen99 * 100.0f), 610.0f, 40.0f, 15.0f, 2, { 1.0f, 1.0f, 1.0f, 1.0f });
+	DxText::GetInstance()->UpDateText(L"DiscriminatorŠwK‹³Žt‰æ‘œ ", 400.0f, 10.0f, 15.0f, { 1.0f, 1.0f, 1.0f, 1.0f });
+	DxText::GetInstance()->UpDateValue((int)(outputDis99 * 100.0f), 710.0f, 10.0f, 15.0f, 2, { 1.0f, 1.0f, 1.0f, 1.0f });
+	DxText::GetInstance()->UpDateText(L"DiscriminatorŠwK¶¬‰æ‘œ ", 400.0f, 25.0f, 15.0f, { 1.0f, 1.0f, 1.0f, 1.0f });
+	DxText::GetInstance()->UpDateValue((int)(outputDis01 * 100.0f), 710.0f, 25.0f, 15.0f, 2, { 1.0f, 1.0f, 1.0f, 1.0f });
+	DxText::GetInstance()->UpDateText(L"Generator    ŠwK¶¬‰æ‘œ ", 400.0f, 40.0f, 15.0f, { 1.0f, 1.0f, 1.0f, 1.0f });
+	DxText::GetInstance()->UpDateValue((int)(outputGen99 * 100.0f), 710.0f, 40.0f, 15.0f, 2, { 1.0f, 1.0f, 1.0f, 1.0f });
+
+	if (pathF) {
+		DxText::GetInstance()->UpDateText(L"DiscriminatorŠwK’† 1‰ñ  ", 400.0f, 60.0f, 15.0f, { 1.0f, 1.0f, 1.0f, 1.0f });
+	}
+	else {
+		DxText::GetInstance()->UpDateText(L"Generator    ŠwK’† 2‰ñ  ", 400.0f, 60.0f, 15.0f, { 1.0f, 1.0f, 1.0f, 1.0f });
+	}
+	DxText::GetInstance()->UpDateValue((int)pathCnt, 400.0f, 75.0f, 15.0f, 2, { 1.0f, 1.0f, 1.0f, 1.0f });
+	DxText::GetInstance()->UpDateText(L"ƒGƒ|ƒbƒN  ", 400.0f, 90.0f, 15.0f, { 1.0f, 1.0f, 1.0f, 1.0f });
+	DxText::GetInstance()->UpDateValue((int)allCnt / NumImage, 400.0f, 105.0f, 15.0f, 2, { 1.0f, 1.0f, 1.0f, 1.0f });
+	DxText::GetInstance()->UpDateText(L"ƒJƒEƒ“ƒg  ", 400.0f, 120.0f, 15.0f, { 1.0f, 1.0f, 1.0f, 1.0f });
+	DxText::GetInstance()->UpDateValue((int)allCnt, 400.0f, 135.0f, 15.0f, 2, { 1.0f, 1.0f, 1.0f, 1.0f });
 }
 
 void GenerativeAdversarialNetworks::SaveDataSet() {

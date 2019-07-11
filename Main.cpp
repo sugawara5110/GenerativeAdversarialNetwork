@@ -34,12 +34,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	dx->Bigin(0);
 	GenerativeAdversarialNetworks* gan = nullptr;
-	gan = new GenerativeAdversarialNetworks(100, 64, 64);
+	gan = new GenerativeAdversarialNetworks(200, 64, 64, 1);
 	dx->End(0);
 	dx->WaitFenceCurrent();
 
 	if (!gan->LoadDataSet()) {
-		ppm = new PPMLoader(L"../gazou/faceData/*", 64, 64, NORMAL);
+		//ppm = new PPMLoader(L"../gazou/faceData/*", 64, 64, GRAYSCALE);
+		ppm = new PPMLoader(L"../gazou/MNIST Dataset JPG format/*", 64, 64, GRAYSCALE);
 		gan->CreateLearningImagebyte(ppm->GetFileNum(), ppm->GetImageArr());
 	}
 

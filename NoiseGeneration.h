@@ -19,6 +19,7 @@ public:
 	NoiseGeneration(UINT numInput);
 	~NoiseGeneration();
 	void CreateNoise(float rate);
+	void CreateNoiseRand();
 	VECTOR3* GetNoiseArray();
 };
 

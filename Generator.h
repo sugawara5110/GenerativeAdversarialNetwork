@@ -20,12 +20,13 @@ private:
 	UINT outh;
 	UINT numFilter;
 	UINT numThread;
+	UINT NumColor;
 	UINT** pixel = nullptr;
 
 	Generator() {}
 
 public:
-	Generator(UINT NumInput, UINT outW, UINT outH);
+	Generator(UINT NumInput, UINT outW, UINT outH, UINT numCol, UINT numFil, UINT inputsetnum);
 	~Generator();
 	void SetNoise(VECTOR3* noise);
 	void SetLearningLate(float nn, float cn);
