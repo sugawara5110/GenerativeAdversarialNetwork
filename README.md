@@ -1,1 +1,4 @@
 # GenerativeAdversarialNetwork
+
+GANの実験中です
+内部で自作人工知能ライブラリを読み込んでます
